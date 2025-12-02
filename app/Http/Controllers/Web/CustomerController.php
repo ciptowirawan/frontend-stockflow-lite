@@ -1,0 +1,138 @@
+<?php
+
+namespace App\Http\Controllers\Web;
+
+use App\Models\Customer;
+use Illuminate\Http\Request;
+use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Http;
+use App\Http\Requests\CustomerRequest;
+use RealRashid\SweetAlert\Facades\Alert;
+
+class CustomerController extends Controller
+{
+    protected $token;
+
+    public function __construct()
+    {
+        $this->token = session('access_token');
+    }
+
+    public function index(Request $request)
+    {
+        $response = Http::withToken($this->token)
+            ->get(config('services.api.base_url').'/customers', $request->all());
+
+        if ($response->failed()) {
+            Alert::error('Error', $response->json('message') ?? 'Something went wrong');
+            return redirect()->back();
+        }
+
+        $data = $response->json();
+        $customers = collect($data['data'] ?? [])->map(function($item) {
+            return json_decode(json_encode($item));
+        });
+
+        $pagination = json_decode(json_encode($data['links'] ?? []));
+
+        return view('masters.customers.index', compact('customers', 'pagination'));
+    }
+
+    public function store(Request $request)
+    {
+        $response = Http::withToken($this->token)
+            ->post(config('services.api.base_url').'/customers', $request->all());
+
+        if ($response->failed()) {
+            $data = $response->json();
+
+            $errorMessage = null;
+            if (isset($data['errors']) && is_array($data['errors'])) {
+                $allErrors = collect($data['errors'])->flatten();
+                $errorMessage = $allErrors->first();
+            }
+
+            if (!$errorMessage) {
+                $errorMessage = $data['message'] ?? 'Validation failed.';
+            }
+
+            Alert::error('Error', $errorMessage);
+            return redirect()->back()->withInput();
+        }
+
+        Alert::success('Success', 'Customer created successfully');
+        return redirect()->route('manage.customers.index');
+    }
+
+    public function show($id)
+    {
+        $response = Http::withToken($this->token)
+            ->get(config('services.api.base_url')."/customers/{$id}");
+
+        if ($response->failed()) {
+            Alert::error('Error', $response->json('message') ?? 'Resource not found');
+            return redirect()->back();
+        }
+
+        $data = $response->json();
+        $categoryObject = (object) ($data['data'] ?? []);
+
+        return $categoryObject;
+    }
+
+    public function edit($id)
+    {
+        $response = Http::withToken($this->token)
+            ->get(config('services.api.base_url')."/customers/{$id}");
+
+        if ($response->failed()) {
+            Alert::error('Error', $response->json('message') ?? 'Resource not found');
+            return redirect()->back();
+        }
+
+        $data = $response->json();
+        $categoryObject = (object) ($data['data'] ?? []);
+
+        return $categoryObject;
+    }
+
+    public function update(Request $request, $id)
+    {
+        $response = Http::withToken($this->token)
+            ->put(config('services.api.base_url')."/customers/{$id}", $request->all());
+
+        if ($response->failed()) {
+            $data = $response->json();
+
+            $errorMessage = null;
+            if (isset($data['errors']) && is_array($data['errors'])) {
+                $allErrors = collect($data['errors'])->flatten();
+                $errorMessage = $allErrors->first();
+            }
+
+            if (!$errorMessage) {
+                $errorMessage = $data['message'] ?? 'Validation failed.';
+            }
+
+            Alert::error('Error', $errorMessage);
+            return redirect()->back()->withInput();
+        }
+
+        Alert::success('Success', 'Customer updated successfully');
+        return redirect()->route('manage.customers.index');
+    }
+
+    public function destroy($id)
+    {
+        $response = Http::withToken($this->token)
+            ->delete(config('services.api.base_url')."/customers/{$id}");
+
+        if ($response->failed()) {
+            Alert::error('Error', $response->json('message') ?? 'Delete failed');
+            return redirect()->back();
+        }
+
+        Alert::success('Success', 'Customer deleted successfully');
+        return redirect()->route('manage.customers.index');
+    }
+}

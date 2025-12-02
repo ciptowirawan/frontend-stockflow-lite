@@ -2,63 +2,98 @@
 
 namespace App\Http\Controllers\Web;
 
-use Illuminate\Http\Request;
-use RealRashid\SweetAlert\Facades\Alert;
-use App\Http\Controllers\Api\StockDetailController as ApiStockDetailController;
 use App\Models\StockDetail;
+use Illuminate\Http\Request;
+use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Http;
+use RealRashid\SweetAlert\Facades\Alert;
 use App\Http\Requests\StockDetailRequest;
 
-class StockDetailController extends ApiStockDetailController
+class StockDetailController extends Controller
 {
+    protected $token;
+
+    public function __construct()
+    {
+        $this->token = session('access_token');
+    }
+
     public function index(Request $request)
     {
-        $response = parent::index($request);
+        $stocksResponse = Http::withToken($this->token)
+            ->get(config('services.api.base_url').'/stock-details', $request->all());
 
-        if ($response instanceof \Illuminate\Http\JsonResponse && $response->getStatusCode() >= 400) {
-            $data = $response->getData(true);
-            Alert::error('Error', $data['message'] ?? 'Something went wrong');
+        if ($stocksResponse->failed()) {
+            Alert::error('Error', $stocksResponse->json('message') ?? 'Something went wrong');
             return redirect()->back();
         }
 
-        $data = $response->getData(true);
-        $stockDetails = collect($data['data'] ?? [])->map(function ($item) {
-            return (object) $item;
+        $stocksData = $stocksResponse->json();
+        $stocks = collect($stocksData['data'] ?? [])->map(function($item) {
+            return json_decode(json_encode($item));
         });
+        $pagination = (object) ($stocksData['links'] ?? []);
 
-        return view('master.stock_details.index', [
-            'stockDetails' => $stockDetails
-        ]);
+        return view('masters.stocks.index', compact('stocks', 'pagination'));
     }
 
-    public function store(StockDetailRequest $request)
+    public function create()
     {
-        $response = parent::store($request);
+        $categoriesResponse = Http::withToken($this->token)
+            ->get(config('services.api.base_url').'/categories', [
+                'per_page' => 'all'
+            ]);
 
-        if ($response instanceof \Illuminate\Http\JsonResponse && $response->getStatusCode() >= 400) {
-            $data = $response->getData(true);
-            Alert::error('Error', $data['message'] ?? 'Validation failed');
+        if ($categoriesResponse->failed()) {
+            Alert::error('Error', $categoriesResponse->json('message') ?? 'Failed to load categories.');
+            return redirect()->back();
+        }
+
+        $categoriesData = $categoriesResponse->json();
+        $categories = collect($categoriesData['data'] ?? [])->map(fn($item) => json_decode(json_encode($item)));
+
+        return view('masters.stocks.create', compact('categories'));
+    }
+
+    public function store(Request $request)
+    {
+        $response = Http::withToken($this->token)
+            ->post(config('services.api.base_url').'/stock-details', $request->all());
+
+        if ($response->failed()) {
+            $data = $response->json();
+
+            $errorMessage = null;
+            if (isset($data['errors']) && is_array($data['errors'])) {
+                $allErrors = collect($data['errors'])->flatten();
+                $errorMessage = $allErrors->first();
+            }
+
+            if (!$errorMessage) {
+                $errorMessage = $data['message'] ?? 'Validation failed.';
+            }
+
+            Alert::error('Error', $errorMessage);
             return redirect()->back()->withInput();
         }
 
-        Alert::success('Success', 'Stock detail created successfully');
-        return redirect()->route('stock_details.index');
+        Alert::success('Success', 'Stock Movement created successfully');
+        return redirect()->route('manage.stock-details.index');
     }
 
-    public function show(StockDetail $stockDetail)
+    public function show($id)
     {
-        $response = parent::show($stockDetail);
+        $response = Http::withToken($this->token)
+            ->get(config('services.api.base_url')."/stock-details/{$id}");
 
-        if ($response instanceof \Illuminate\Http\JsonResponse && $response->getStatusCode() >= 400) {
-            $data = $response->getData(true);
-            Alert::error('Error', $data['message'] ?? 'Resource not found');
+        if ($response->failed()) {
+            Alert::error('Error', $response->json('message') ?? 'Resource not found');
             return redirect()->back();
         }
 
-        $data = $response->getData(true);
-        $stockDetailObject = (object) ($data['data'] ?? []);
+        $data = $response->json();
+        $categoryObject = (object) ($data['data'] ?? []);
 
-        return view('master.stock_details.show', [
-            'stockDetail' => $stockDetailObject
-        ]);
+        return $categoryObject;
     }
 }

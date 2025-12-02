@@ -2,109 +2,127 @@
 
 namespace App\Http\Controllers\Web;
 
-use Illuminate\Http\Request;
-use RealRashid\SweetAlert\Facades\Alert;
-use App\Http\Controllers\Api\SaleController as ApiSaleController;
 use App\Models\Sale;
+use Illuminate\Http\Request;
 use App\Http\Requests\SaleRequest;
+use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Http;
+use RealRashid\SweetAlert\Facades\Alert;
 
-class SaleController extends ApiSaleController
+class SaleController extends Controller
 {
+    protected $token;
+
+    public function __construct()
+    {
+        $this->token = session('access_token');
+    }
+
     public function index(Request $request)
     {
-        $response = parent::index($request);
+        $salesResponse = Http::withToken($this->token)
+            ->get(config('services.api.base_url').'/sales', $request->all());
 
-        if ($response instanceof \Illuminate\Http\JsonResponse && $response->getStatusCode() >= 400) {
-            $data = $response->getData(true);
-            Alert::error('Error', $data['message'] ?? 'Something went wrong');
+        if ($salesResponse->failed()) {
+            Alert::error('Error', $salesResponse->json('message') ?? 'Something went wrong');
             return redirect()->back();
         }
 
-        $data = $response->getData(true);
-        $sales = collect($data['data'] ?? [])->map(function ($item) {
-            return (object) $item;
+        $salesData = $salesResponse->json();
+        $sales = collect($salesData['data'] ?? [])->map(function($item) {
+            return json_decode(json_encode($item));
         });
+        $pagination = (object) ($salesData['links'] ?? []);
 
-        return view('masters.sales.index', [
-            'sales' => $sales
-        ]);
+        return view('masters.sales.index', compact('sales', 'pagination'));
     }
 
-    public function store(SaleRequest $request)
+    public function show($id)
     {
-        $response = parent::store($request);
+        $response = Http::withToken($this->token)
+            ->get(config('services.api.base_url')."/sales/{$id}");
 
-        if ($response instanceof \Illuminate\Http\JsonResponse && $response->getStatusCode() >= 400) {
-            $data = $response->getData(true);
-            Alert::error('Error', $data['message'] ?? 'Validation failed');
+        if ($response->failed()) {
+            Alert::error('Error', $response->json('message') ?? 'Resource not found');
+            return redirect()->back();
+        }
+
+        $data = $response->json();
+        $sale = json_decode(json_encode($data['data'] ?? []));
+        dd($sale);
+
+        return view('masters.sales.show', compact('sale'));
+    }
+
+    public function create()
+    {
+        $categoriesResponse = Http::withToken($this->token)
+            ->get(config('services.api.base_url').'/categories', [
+                'per_page' => 'all'
+            ]);
+
+        if ($categoriesResponse->failed()) {
+            Alert::error('Error', $categoriesResponse->json('message') ?? 'Failed to load categories.');
+            return redirect()->back();
+        }
+
+        $categoriesData = $categoriesResponse->json();
+        $categories = collect($categoriesData['data'] ?? [])->map(fn($item) => json_decode(json_encode($item)));
+
+        $customersResponse = Http::withToken($this->token)
+            ->get(config('services.api.base_url').'/customers', [
+                'per_page' => 'all'
+            ]);
+
+        if ($customersResponse->failed()) {
+            Alert::error('Error', $customersResponse->json('message') ?? 'Failed to load customers.');
+            return redirect()->back();
+        }
+
+        $customersData = $customersResponse->json();
+        $customers = collect($customersData['data'] ?? [])->map(fn($item) => json_decode(json_encode($item)));
+
+
+        return view('masters.sales.create', compact('categories', 'customers'));
+    }
+
+    public function store(Request $request)
+    {
+        $response = Http::withToken($this->token)
+            ->post(config('services.api.base_url').'/sales', $request->all());
+
+        if ($response->failed()) {
+            $data = $response->json();
+
+            $errorMessage = null;
+            if (isset($data['errors']) && is_array($data['errors'])) {
+                $allErrors = collect($data['errors'])->flatten();
+                $errorMessage = $allErrors->first();
+            }
+
+            if (!$errorMessage) {
+                $errorMessage = $data['message'] ?? 'Validation failed.';
+            }
+
+            Alert::error('Error', $errorMessage);
             return redirect()->back()->withInput();
         }
 
         Alert::success('Success', 'Sale created successfully');
-        return redirect()->route('sales.index');
+        return redirect()->route('manage.sales.index');
     }
 
-    public function show(Sale $sale)
+    public function destroy($id)
     {
-        $response = parent::show($sale);
+        $response = Http::withToken($this->token)
+            ->delete(config('services.api.base_url')."/sales/{$id}");
 
-        if ($response instanceof \Illuminate\Http\JsonResponse && $response->getStatusCode() >= 400) {
-            $data = $response->getData(true);
-            Alert::error('Error', $data['message'] ?? 'Resource not found');
+        if ($response->failed()) {
+            Alert::error('Error', $response->json('message') ?? 'Delete failed');
             return redirect()->back();
         }
 
-        $data = $response->getData(true);
-        $saleObject = (object) ($data['data'] ?? []);
-
-        return view('masters.sales.show', [
-            'sale' => $saleObject
-        ]);
-    }
-
-    public function edit(Sale $sale)
-    {
-        $response = parent::show($sale);
-
-        if ($response instanceof \Illuminate\Http\JsonResponse && $response->getStatusCode() >= 400) {
-            $data = $response->getData(true);
-            Alert::error('Error', $data['message'] ?? 'Resource not found');
-            return redirect()->back();
-        }
-
-        $data = $response->getData(true);
-        $saleObject = (object) ($data['data'] ?? []);
-
-        return view('masters.sales.edit', [
-            'sale' => $saleObject
-        ]);
-    }
-
-    public function update(SaleRequest $request, Sale $sale)
-    {
-        $response = parent::update($request, $sale);
-
-        if ($response instanceof \Illuminate\Http\JsonResponse && $response->getStatusCode() >= 400) {
-            $data = $response->getData(true);
-            Alert::error('Error', $data['message'] ?? 'Update failed');
-            return redirect()->back()->withInput();
-        }
-
-        Alert::success('Success', 'Sale updated successfully');
-        return redirect()->route('sales.index');
-    }
-
-    public function destroy(Sale $sale)
-    {
-        $response = parent::destroy($sale);
-
-        if ($response instanceof \Illuminate\Http\JsonResponse && $response->getStatusCode() >= 400) {
-            $data = $response->getData(true);
-            Alert::error('Error', $data['message'] ?? 'Delete failed');
-            return redirect()->back();
-        }
-
-        Alert::success('Success', 'Sale deleted successfully');
-        return redirect()->route('sales.index');
+        Alert::success('Success', 'Sale voided successfully');
+        return redirect()->route('manage.sales.index');
     }
 }

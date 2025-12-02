@@ -2,109 +2,127 @@
 
 namespace App\Http\Controllers\Web;
 
-use Illuminate\Http\Request;
-use RealRashid\SweetAlert\Facades\Alert;
-use App\Http\Controllers\Api\PurchaseController as ApiPurchaseController;
 use App\Models\Purchase;
+use Illuminate\Http\Request;
+use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Http;
 use App\Http\Requests\PurchaseRequest;
+use RealRashid\SweetAlert\Facades\Alert;
 
-class PurchaseController extends ApiPurchaseController
+class PurchaseController extends Controller
 {
+    protected $token;
+
+    public function __construct()
+    {
+        $this->token = session('access_token');
+    }
+
     public function index(Request $request)
     {
-        $response = parent::index($request);
+        $purchasesResponse = Http::withToken($this->token)
+            ->get(config('services.api.base_url').'/purchases', $request->all());
 
-        if ($response instanceof \Illuminate\Http\JsonResponse && $response->getStatusCode() >= 400) {
-            $data = $response->getData(true);
-            Alert::error('Error', $data['message'] ?? 'Something went wrong');
+        if ($purchasesResponse->failed()) {
+            Alert::error('Error', $purchaseResponse->json('message') ?? 'Something went wrong');
             return redirect()->back();
         }
 
-        $data = $response->getData(true);
-        $purchases = collect($data['data'] ?? [])->map(function ($item) {
-            return (object) $item;
+        $purchasesData = $purchasesResponse->json();
+        $purchases = collect($purchasesData['data'] ?? [])->map(function($item) {
+            return json_decode(json_encode($item));
         });
 
-        return view('masters.purchases.index', [
-            'purchases' => $purchases
-        ]);
+        $pagination = (object) ($purchaseData['links'] ?? []);
+
+        return view('masters.purchases.index', compact('purchases', 'pagination'));
     }
 
-    public function store(PurchaseRequest $request)
+    public function show($id)
     {
-        $response = parent::store($request);
+        $response = Http::withToken($this->token)
+            ->get(config('services.api.base_url')."/purchases/{$id}");
 
-        if ($response instanceof \Illuminate\Http\JsonResponse && $response->getStatusCode() >= 400) {
-            $data = $response->getData(true);
-            Alert::error('Error', $data['message'] ?? 'Validation failed');
+        if ($response->failed()) {
+            Alert::error('Error', $response->json('message') ?? 'Resource not found');
+            return redirect()->back();
+        }
+
+        $data = $response->json();
+        $purchase = json_decode(json_encode($data['data'] ?? []));
+
+        return view('masters.purchases.show', compact('purchase'));
+    }
+
+    public function create()
+    {
+        $categoriesResponse = Http::withToken($this->token)
+            ->get(config('services.api.base_url').'/categories', [
+                'per_page' => 'all'
+            ]);
+
+        if ($categoriesResponse->failed()) {
+            Alert::error('Error', $categoriesResponse->json('message') ?? 'Failed to load categories.');
+            return redirect()->back();
+        }
+
+        $categoriesData = $categoriesResponse->json();
+        $categories = collect($categoriesData['data'] ?? [])->map(fn($item) => json_decode(json_encode($item)));
+
+        $suppliersResponse = Http::withToken($this->token)
+            ->get(config('services.api.base_url').'/suppliers', [
+                'per_page' => 'all'
+            ]);
+
+        if ($suppliersResponse->failed()) {
+            Alert::error('Error', $suppliersResponse->json('message') ?? 'Failed to load suppliers.');
+            return redirect()->back();
+        }
+
+        $suppliersData = $suppliersResponse->json();
+        $suppliers = collect($suppliersData['data'] ?? [])->map(fn($item) => json_decode(json_encode($item)));
+
+
+        return view('masters.purchases.create', compact('categories', 'suppliers'));
+    }
+
+    public function store(Request $request)
+    {
+        $response = Http::withToken($this->token)
+            ->post(config('services.api.base_url').'/purchases', $request->all());
+
+        if ($response->failed()) {
+            $data = $response->json();
+
+            $errorMessage = null;
+            if (isset($data['errors']) && is_array($data['errors'])) {
+                $allErrors = collect($data['errors'])->flatten();
+                $errorMessage = $allErrors->first();
+            }
+
+            if (!$errorMessage) {
+                $errorMessage = $data['message'] ?? 'Validation failed.';
+            }
+
+            Alert::error('Error', $errorMessage);
             return redirect()->back()->withInput();
         }
 
         Alert::success('Success', 'Purchase created successfully');
-        return redirect()->route('purchases.index');
+        return redirect()->route('manage.purchases.index');
     }
 
-    public function show(Purchase $purchase)
+    public function destroy($id)
     {
-        $response = parent::show($purchase);
+        $response = Http::withToken($this->token)
+            ->delete(config('services.api.base_url')."/purchases/{$id}");
 
-        if ($response instanceof \Illuminate\Http\JsonResponse && $response->getStatusCode() >= 400) {
-            $data = $response->getData(true);
-            Alert::error('Error', $data['message'] ?? 'Resource not found');
+        if ($response->failed()) {
+            Alert::error('Error', $response->json('message') ?? 'Delete failed');
             return redirect()->back();
         }
 
-        $data = $response->getData(true);
-        $purchaseObject = (object) ($data['data'] ?? []);
-
-        return view('masters.purchases.show', [
-            'purchase' => $purchaseObject
-        ]);
-    }
-
-    public function edit(Purchase $purchase)
-    {
-        $response = parent::show($purchase);
-
-        if ($response instanceof \Illuminate\Http\JsonResponse && $response->getStatusCode() >= 400) {
-            $data = $response->getData(true);
-            Alert::error('Error', $data['message'] ?? 'Resource not found');
-            return redirect()->back();
-        }
-
-        $data = $response->getData(true);
-        $purchaseObject = (object) ($data['data'] ?? []);
-
-        return view('masters.purchases.edit', [
-            'purchase' => $purchaseObject
-        ]);
-    }
-
-    public function update(PurchaseRequest $request, Purchase $purchase)
-    {
-        $response = parent::update($request, $purchase);
-
-        if ($response instanceof \Illuminate\Http\JsonResponse && $response->getStatusCode() >= 400) {
-            $data = $response->getData(true);
-            Alert::error('Error', $data['message'] ?? 'Update failed');
-            return redirect()->back()->withInput();
-        }
-
-        Alert::success('Success', 'Purchase updated successfully');
-        return redirect()->route('purchases.index');
-    }
-
-    public function destroy(Purchase $purchase)
-    {
-        $response = parent::destroy($purchase);
-
-        if ($response instanceof \Illuminate\Http\JsonResponse && $response->getStatusCode() >= 400) {
-            $data = $response->getData(true);
-            Alert::error('Error', $data['message'] ?? 'Delete failed');
-            return redirect()->back();
-        }
-
-        Alert::success('Success', 'Purchase deleted successfully');
-        return redirect()->route('purchases.index');
+        Alert::success('Success', 'Purchase voided successfully');
+        return redirect()->route('manage.purchases.index');
     }
 }

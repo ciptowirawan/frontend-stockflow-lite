@@ -28,6 +28,7 @@ class ProductController extends Controller
             return redirect()->back();
         }
 
+        
         $productsData = $productsResponse->json();
         $products = collect($productsData['data'] ?? [])->map(function($item) {
             return json_decode(json_encode($item));
@@ -147,5 +148,23 @@ class ProductController extends Controller
 
         Alert::success('Success', 'Product deleted successfully');
         return redirect()->route('manage.products.index');
+    }
+
+    public function indexByCategory($categoryId)
+    {
+        $productsResponse = Http::withToken($this->token)
+            ->get(config('services.api.base_url').'/products/category/' . $categoryId);
+
+        if ($productsResponse->failed()) {
+            Alert::error('Error', $productsResponse->json('message') ?? 'Failed to load products by category.');
+            return redirect()->back();
+        }
+
+        $productsData = $productsResponse->json();
+        $products = collect($productsData['data'] ?? [])->map(function($item) {
+            return json_decode(json_encode($item));
+        });
+        
+        return $products;
     }
 }

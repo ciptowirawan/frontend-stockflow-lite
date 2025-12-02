@@ -17,10 +17,10 @@
             <tr>
                 <th>#</th>
                 <th>Nama</th>
-                <th>Unit</th>
                 <th>Harga</th>
                 <th>Kategori</th>
-                <th>Created By</th>
+                <th>Total Stock</th>
+                <th>Unit</th>
                 <th>Updated By</th>
                 <th>Created At</th>
                 <th>Updated At</th>
@@ -32,10 +32,10 @@
             <tr>
                 <td>{{ $index + 1 }}</td>
                 <td>{{ ucfirst(strtolower($product->name)) }}</td>
-                <td>{{ $product->unit }}</td>
                 <td>{{ number_format($product->price, 0, ',', '.') }}</td>
                 <td>{{ ucfirst(strtolower($product->category->name ?? "-")) }}</td>
-                <td>{{ $product->created_by->name ?? '-' }}</td>
+                <td>{{ $product->stock->total_stock ?? '-' }}</td>
+                <td>{{ $product->unit }}</td>
                 <td>{{ $product->updated_by->name ?? '-' }}</td>
                 <td>{{ \Carbon\Carbon::parse($product->created_at)->timezone('Asia/Jakarta')->translatedFormat('d F Y H:i:s') }}</td>
                 <td>{{ \Carbon\Carbon::parse($product->updated_at)->timezone('Asia/Jakarta')->translatedFormat('d F Y H:i:s') }}</td>

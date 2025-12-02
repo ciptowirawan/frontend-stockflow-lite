@@ -30,6 +30,10 @@ Route::middleware('api.auth.web')->group(function () {
         Route::resource('customers', CustomerController::class);
         Route::resource('suppliers', SupplierController::class);
         Route::resource('categories', CategoryController::class);
+
+        Route::get('products/category/{categoryId}', [ProductController::class, 'indexByCategory'])
+        ->name('manage.products.byCategory');
+
         Route::resource('products', ProductController::class);
         Route::resource('stock-details', StockDetailController::class);
         Route::resource('sales', SaleController::class);

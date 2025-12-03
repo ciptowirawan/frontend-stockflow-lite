@@ -30,7 +30,7 @@
         <tbody>
             @forelse($products as $index => $product)
             <tr>
-                <td>{{ $index + 1 }}</td>
+                <td>{{ $startNumber + $index + 1 }}</td>
                 <td>{{ ucfirst(strtolower($product->name)) }}</td>
                 <td>{{ number_format($product->price, 0, ',', '.') }}</td>
                 <td>{{ ucfirst(strtolower($product->category->name ?? "-")) }}</td>
@@ -56,15 +56,17 @@
         </tbody>
     </table>
 
-    <div class="d-flex justify-content-between mt-3">
+   <div class="d-flex justify-content-between mt-3">
         @if($pagination->prev ?? false)
-            <a href="{{ $pagination->prev }}" class="btn btn-outline-primary">Previous</a>
+            <a href="{{ route('manage.products.index', ['page' => request('page', 1) - 1]) }}" 
+            class="btn btn-outline-primary">Previous</a>
         @else
             <button class="btn btn-outline-secondary" disabled>Previous</button>
         @endif
 
         @if($pagination->next ?? false)
-            <a href="{{ $pagination->next }}" class="btn btn-outline-primary">Next</a>
+            <a href="{{ route('manage.products.index', ['page' => request('page', 1) + 1]) }}" 
+            class="btn btn-outline-primary">Next</a>
         @else
             <button class="btn btn-outline-secondary" disabled>Next</button>
         @endif

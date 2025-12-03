@@ -30,7 +30,7 @@
                     </div>
                 </div>
 
-                <hr class="mt-4 mb-3">
+                <hr class="mt-2 mb-3">
                         
                 <h5 class="mb-3">Item Penjualan</h5>
 
@@ -69,21 +69,11 @@
                     </table>
                 </div>
 
-                <hr class="mt-4 mb-3">
-
-                <div class="row justify-content-end">
-                    <div class="col-md-6 col-lg-4">
-                        <div class="mb-3">
-                            <label>Grand Total</label>
-                            <input type="text" class="form-control fw-bold" 
-                                value="Rp {{ number_format($sale->grand_total, 0, ',', '.') }}" readonly>
-                        </div>
-                    </div>
-                </div>
+                <hr class="mb-2">
                 
                 <div class="row justify-content-end">
                     <div class="col-md-6 col-lg-4">
-                        <div class="mb-3">
+                        <div class="mb-2">
                             <label>Paid Amount</label>
                             <input type="text" class="form-control" 
                                 value="Rp {{ number_format($sale->paid_amount, 0, ',', '.') }}" readonly>
@@ -93,7 +83,7 @@
 
                 <div class="row justify-content-end">
                     <div class="col-md-6 col-lg-4">
-                        <div class="mb-3">
+                        <div class="mb-2">
                             <label>Kembalian</label>
                             @php
                                 $kembalian = $sale->paid_amount - $sale->grand_total;

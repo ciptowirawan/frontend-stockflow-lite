@@ -32,9 +32,16 @@ class SaleController extends Controller
         $sales = collect($salesData['data'] ?? [])->map(function($item) {
             return json_decode(json_encode($item));
         });
+
         $pagination = (object) ($salesData['links'] ?? []);
 
-        return view('masters.sales.index', compact('sales', 'pagination'));
+        $meta = $salesData['meta'] ?? [];
+        $perPage = $meta['per_page'] ?? 10;
+        $currentPage = $request->query('page', 1);
+
+        $startNumber = ($currentPage - 1) * $perPage;
+
+        return view('masters.sales.index', compact('sales', 'pagination', 'startNumber'));
     }
 
     public function show($id)
@@ -49,7 +56,6 @@ class SaleController extends Controller
 
         $data = $response->json();
         $sale = json_decode(json_encode($data['data'] ?? []));
-        dd($sale);
 
         return view('masters.sales.show', compact('sale'));
     }

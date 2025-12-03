@@ -34,7 +34,13 @@ class StockDetailController extends Controller
         });
         $pagination = (object) ($stocksData['links'] ?? []);
 
-        return view('masters.stocks.index', compact('stocks', 'pagination'));
+        $meta = $stocksData['meta'] ?? [];
+        $perPage = $meta['per_page'] ?? 10;
+        $currentPage = $request->query('page', 1);
+
+        $startNumber = ($currentPage - 1) * $perPage;
+
+        return view('masters.stocks.index', compact('stocks', 'pagination', 'startNumber'));
     }
 
     public function create()

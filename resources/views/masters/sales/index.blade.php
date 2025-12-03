@@ -28,7 +28,7 @@
         <tbody>
             @forelse($sales as $index => $sale)
             <tr>
-                <td>{{ $index + 1 }}</td>
+                <td>{{ $startNumber + $index + 1 }}</td>
                 <td>{{ \Carbon\Carbon::parse($sale->order_date)->timezone('Asia/Jakarta')->translatedFormat('d F Y H:i:s')}}</td>
                 <td>{{ $sale->customer->name ?? '-' }}</td>
                 <td>{{ number_format($sale->grand_total, 0, ',', '.') }}</td>
@@ -54,13 +54,15 @@
 
     <div class="d-flex justify-content-between mt-3">
         @if($pagination->prev ?? false)
-            <a href="{{ $pagination->prev }}" class="btn btn-outline-primary">Previous</a>
+            <a href="{{ route('manage.sales.index', ['page' => request('page', 1) - 1]) }}" 
+            class="btn btn-outline-primary">Previous</a>
         @else
             <button class="btn btn-outline-secondary" disabled>Previous</button>
         @endif
 
         @if($pagination->next ?? false)
-            <a href="{{ $pagination->next }}" class="btn btn-outline-primary">Next</a>
+            <a href="{{ route('manage.sales.index', ['page' => request('page', 1) + 1]) }}" 
+            class="btn btn-outline-primary">Next</a>
         @else
             <button class="btn btn-outline-secondary" disabled>Next</button>
         @endif

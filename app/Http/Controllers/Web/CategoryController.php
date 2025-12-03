@@ -33,8 +33,13 @@ class CategoryController
         });
 
         $pagination = json_decode(json_encode($data['links'] ?? []));
+        $meta = $data['meta'] ?? [];
+        $perPage = $meta['per_page'] ?? 10;
+        $currentPage = $request->query('page', 1);
 
-        return view('masters.categories.index', compact('categories', 'pagination'));
+        $startNumber = ($currentPage - 1) * $perPage;
+
+        return view('masters.categories.index', compact('categories', 'pagination', 'startNumber'));
     }
 
     public function store(Request $request)

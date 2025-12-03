@@ -35,7 +35,13 @@ class PurchaseController extends Controller
 
         $pagination = (object) ($purchaseData['links'] ?? []);
 
-        return view('masters.purchases.index', compact('purchases', 'pagination'));
+        $meta = $purchasesData['meta'] ?? [];
+        $perPage = $meta['per_page'] ?? 10;
+        $currentPage = $request->query('page', 1);
+
+        $startNumber = ($currentPage - 1) * $perPage;
+
+        return view('masters.purchases.index', compact('purchases', 'pagination', 'startNumber'));
     }
 
     public function show($id)

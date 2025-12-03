@@ -34,7 +34,13 @@ class UserController extends Controller
 
         $pagination = json_decode(json_encode($data['links'] ?? []));
 
-        return view('masters.users.index', compact('users', 'pagination'));
+        $meta = $data['meta'] ?? [];
+        $perPage = $meta['per_page'] ?? 10;
+        $currentPage = $request->query('page', 1);
+
+        $startNumber = ($currentPage - 1) * $perPage;
+
+        return view('masters.users.index', compact('users', 'pagination', 'startNumber'));
     }
 
     public function store(Request $request)

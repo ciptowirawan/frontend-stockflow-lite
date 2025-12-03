@@ -27,7 +27,6 @@ class ProductController extends Controller
             Alert::error('Error', $productsResponse->json('message') ?? 'Something went wrong');
             return redirect()->back();
         }
-
         
         $productsData = $productsResponse->json();
         $products = collect($productsData['data'] ?? [])->map(function($item) {
@@ -48,7 +47,13 @@ class ProductController extends Controller
         $categoriesData = $categoriesResponse->json();
         $categories = collect($categoriesData['data'] ?? [])->map(fn($item) => (object) $item);
 
-        return view('masters.products.index', compact('products', 'pagination', 'categories'));
+        $meta = $productsData['meta'] ?? [];
+        $perPage = $meta['per_page'] ?? 10;
+        $currentPage = $request->query('page', 1);
+
+        $startNumber = ($currentPage - 1) * $perPage;
+
+        return view('masters.products.index', compact('products', 'pagination', 'categories', 'startNumber'));
     }
 
 

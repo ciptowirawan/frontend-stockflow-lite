@@ -36,7 +36,7 @@
                 <td>{{ $sale->created_by->name ?? '-' }}</td>
                 <td>{{ \Carbon\Carbon::parse($sale->created_at)->timezone('Asia/Jakarta')->translatedFormat('d F Y H:i:s') }}</td>
                 <td width="150px">
-                    <a href="{{ route('manage.sales.show', $sale->id) }}" class="btn btn-primary btn-sm mr-1">View</a>         
+                    <a href="{{ route('manage.sales.show', $sale->id) }}" class="btn btn-primary btn-sm">View</a>         
                     <form action="{{ route('manage.sales.destroy', $sale->id) }}" method="POST" class="d-inline delete-form" data-sale-name="{{ $sale->customer->name ?? 'Sale #'.$sale->id }}">
                         @csrf
                         @method('DELETE')

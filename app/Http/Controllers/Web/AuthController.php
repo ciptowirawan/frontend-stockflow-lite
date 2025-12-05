@@ -20,8 +20,8 @@ class AuthController extends Controller
     {
         $response = Http::post(config('services.api.base_url').'/login', $request->all());
 
-        if ($response instanceof \Illuminate\Http\JsonResponse && $response->getStatusCode() !== 200) {
-            $data = $response->getData(true);
+        if ($response->failed()) {
+            $data = $response->json();
             Alert::error('Login Failed', $data['message'] ?? 'Email atau password salah.');
             return redirect()->back()->withInput();
         }

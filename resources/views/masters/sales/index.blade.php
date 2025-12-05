@@ -29,7 +29,7 @@
             @forelse($sales as $index => $sale)
             <tr>
                 <td>{{ $startNumber + $index + 1 }}</td>
-                <td>{{ \Carbon\Carbon::parse($sale->order_date)->timezone('Asia/Jakarta')->translatedFormat('d F Y H:i:s')}}</td>
+                <td>{{ \Carbon\Carbon::parse($sale->order_date)->timezone('Asia/Jakarta')->translatedFormat('d F Y')}}</td>
                 <td>{{ $sale->customer->name ?? '-' }}</td>
                 <td>{{ number_format($sale->grand_total, 0, ',', '.') }}</td>
                 <td>{{ number_format($sale->paid_amount, 0, ',', '.') }}</td>
